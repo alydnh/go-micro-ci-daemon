@@ -23,4 +23,10 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Build
-      run: go build -o target/main -v -mod=vendor
+      run: go build -o target/go-micro-ci-daemon -v -mod=vendor
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: main
+        path: target/go-micro-ci-daemon
