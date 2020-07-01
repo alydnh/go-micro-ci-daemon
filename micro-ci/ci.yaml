@@ -1,0 +1,48 @@
+name: micro-ci-test
+namespace: test.{{ .v1 }}
+registry:
+  type: consul
+  address: "{{ .v2 }}-consul"
+  port: 8500
+  useSSL: false
+variables:
+  v1: v1-value
+  v2: v2-value
+commonEnvs:
+  cev1: cev1-value
+  cev2: cev2-value
+thirdServices:
+  consul:
+    image:
+      name: consul:latest
+      ref: docker.io/library/consul
+    exposedPorts:
+      8500/tcp:
+        hostIP: 127.0.0.1
+        hostPort: 8501
+    assertions:
+      successes:
+        - Consul agent running!
+services:
+  helloWorld:
+    dependsOn:
+      - consul
+    build:
+      git: https://github.com/alydnh/helloworld
+      branch: master
+      target: target
+      env:
+        GOOS: linux
+      scripts:
+        - go build -o target/main -v -mod=vendor main.go
+    image:
+      name: dockerio/alydnh/helloworld:v1.0.0
+      dockerFile: |
+        FROM docker.srgow.com/golang:stretch
+        ADD ./main /main
+        WORKDIR /
+        RUN chmod u+x /main
+        CMD ["/main","--port","8090","--host","0.0.0.0"]
+    assertions:
+      successes:
+        - hello world

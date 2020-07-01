@@ -20,6 +20,7 @@ type CI struct {
 	Credentials           []*Credential       `yaml:"credentials"`
 	Metadata              map[string]string   `yaml:"metadata"`
 	CIName                string              `yaml:"name"`
+	Namespace             string              `yaml:"namespace"`
 	sequencedServiceNames []string
 }
 
