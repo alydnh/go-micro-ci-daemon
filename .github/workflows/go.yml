@@ -32,7 +32,7 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USER_NAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-        repository: alydnh/go-micro-ci-daemon
+        repository: go-micro-ci-daemon
         registry: docker.io/alydnh
         tags: 0.0.1,latest
         path: target
