@@ -25,8 +25,12 @@ jobs:
     - name: Build
       run: go build -o target/go-micro-ci-daemon -v -mod=vendor
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v1.1.0
       with:
-        name: main
-        path: target/go-micro-ci-daemon
+        username: "{{secret.DOCKER_USERNAME}}"
+        password: "{{secret.DOCKER_PASSWORD}}"
+        registry: "alydnh"
+        tags: 0.0.1,latest
+        path: target
+        push: true
