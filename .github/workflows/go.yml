@@ -28,8 +28,8 @@ jobs:
     - name: Build and push Docker images
       uses: docker/build-push-action@v1.1.0
       with:
-        username: "{{secret.DOCKER_USERNAME}}"
-        password: "{{secret.DOCKER_PASSWORD}}"
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
         repository: alydnh/go-micro-ci-daemon  
         registry: docker.io/alydnh
         tags: 0.0.1,latest
