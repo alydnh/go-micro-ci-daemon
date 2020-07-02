@@ -3,7 +3,8 @@ module github.com/alydnh/go-micro-ci-daemon
 go 1.13
 
 require (
-	github.com/alydnh/go-micro-ci-common v0.0.0-20200701124547-ded1686aee57
+	github.com/Azure/go-autorest/autorest/azure/auth v0.1.0 // indirect
+	github.com/alydnh/go-micro-ci-common v0.0.0-20200702094049-8cf4ee3c2ac7
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0
