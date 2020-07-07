@@ -2,60 +2,106 @@ package main
 
 import (
 	"fmt"
+	"github.com/alydnh/go-micro-ci-common/logs"
 	"github.com/alydnh/go-micro-ci-common/yaml"
+	"github.com/alydnh/go-micro-ci-daemon/ci"
+	"github.com/alydnh/go-micro-ci-daemon/ci/deployments"
 	"github.com/alydnh/go-micro-ci-daemon/docker"
-	"github.com/alydnh/go-micro-ci-daemon/logs"
 	"github.com/alydnh/go-micro-ci-daemon/registry"
 	"github.com/micro/go-micro/v2"
 	"github.com/micro/go-micro/v2/logger"
-	_ "github.com/micro/go-plugins/registry/consul/v2"
 	"github.com/sirupsen/logrus"
 	"os"
+	"strings"
 	"time"
 )
 
 const defaultCIPath = "micro-ci/ci.yaml"
 
 func main() {
-	mainLog := logrus.New()
-	mainLog.Out = os.Stdout
-	mainLog.SetFormatter(&logrus.JSONFormatter{})
-	initializeLogEntry := mainLog.WithField("type", "initialize")
-	initializeLogEntry.Info("open:", defaultCIPath)
-	ci, err := yaml.OpenCI(defaultCIPath, true)
-	if nil != err {
-		initializeLogEntry.WithField("file", defaultCIPath).Error(err)
-		os.Exit(1)
-	}
-	initializeLogEntry.WithFields(logrus.Fields{
-		"name": ci.CIName,
-	}).Info("open successes.")
+	ci.DefaultLogger = logrus.New()
+	ci.DefaultLogger.Out = os.Stdout
+	ci.DefaultLogger.SetFormatter(&logrus.TextFormatter{})
 
-	initializeLogEntry.Info("check docker version")
+	if v, ok := os.LookupEnv("ENABLE_LOGGER_CALLER"); ok && strings.Compare(v, "true") == 0 {
+		ci.DefaultLogger.ReportCaller = true
+	}
+
+	mainLogScope := &logs.LogrusScope{Entry: ci.DefaultLogger.WithField("name", "main")}
+	_ = mainLogScope.WithField("type", "initialize").
+		Call(initializeCI).
+		Then(checkDockerVersion).
+		Then(ensureDockerNetwork).
+		Then(deploy).
+		Then(run).
+		OnError(func(err error, ls *logs.LogrusScope) error {
+			ls.Error(err)
+			os.Exit(2)
+			return err
+		})
+}
+
+func initializeCI(ls *logs.LogrusScope) (err error) {
+	ls.Info("open:", defaultCIPath)
+	ci.CI, err = yaml.OpenCI(defaultCIPath, true)
+	if nil != err {
+		ls.WithField("file", defaultCIPath).Error(err)
+		return err
+	}
+	ls.WithField("ciName", ci.CI.CIName).Info("open successes.")
+	return
+}
+
+func checkDockerVersion(ls *logs.LogrusScope) (err error) {
+	ls.Info("check docker version")
 	v, err := docker.GetDockerVersion()
 	if nil != err {
-		initializeLogEntry.Error(err)
-		os.Exit(1)
+		return
 	}
-	initializeLogEntry.WithField("version", v).Info("docker version detected")
+	ls.WithField("dockerVersion", v).Info("docker version detected")
+	return
+}
 
-	initializeLogEntry.Info("starting service...")
-	logger.DefaultLogger = logs.NewMicroLogrus(mainLog)
-	serviceName := fmt.Sprintf("%s.%s", ci.Namespace, ci.CIName)
+func ensureDockerNetwork(ls *logs.LogrusScope) error {
+	networkMode := ci.GetNetworkMode()
+	ls.WithField("dockerNetworkMode", networkMode).Info("prepare docker network...")
+	return docker.EnsureNetworkMode(networkMode, "bridge")
+}
+
+func deploy(ls *logs.LogrusScope) (err error) {
+	ls.Info("starting third services...")
+	for _, containerName := range ci.CI.GetSequencedContainerNames() {
+		service := ci.CI.GetService(containerName)
+		if service.IsThird() {
+			result := ls.WithField("containerName", containerName).Handle(func(ls *logs.LogrusScope) (result interface{}, err error) {
+				deployment, err := deployments.FromService(containerName)
+				if nil != err {
+					return nil, err
+				}
+				return nil, deployment.Deploy()
+			})
+			if result.HasError() {
+				return result.GetError()
+			}
+		}
+	}
+	return
+}
+
+func run(ls *logs.LogrusScope) (err error) {
+	ls.Info("deploying service...")
+	logger.DefaultLogger = logs.NewMicroLogrus(ci.DefaultLogger)
+	serviceName := fmt.Sprintf("%s.%s", ci.CI.Namespace, ci.CI.CIName)
 	service := micro.NewService(
 		micro.Name(serviceName),
 		micro.RegisterInterval(time.Second*30),
 		micro.RegisterTTL(time.Second*60),
-		micro.Version("default"),
-		registry.Registry(ci.Registry),
+		registry.Registry(ci.CI.Registry),
 		micro.AfterStart(func() error {
-			initializeLogEntry.WithField("serviceName", serviceName).Info("Started")
+			ls.WithField("serviceName", serviceName).Info("Started")
 			return nil
 		}),
 	)
 	service.Init()
-	if err = service.Run(); nil != err {
-		initializeLogEntry.WithField("serviceName", serviceName).Error("service start failed with error:", err)
-		os.Exit(2)
-	}
+	return service.Run()
 }

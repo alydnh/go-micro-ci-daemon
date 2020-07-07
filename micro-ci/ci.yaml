@@ -1,16 +1,18 @@
 name: micro-ci-test
-namespace: test.{{ .v1 }}
+namespace: "{{ .namespace }}"
 registry:
   type: consul
-  address: "{{ .v2 }}-consul"
+  address: "micro-ci-test-consul"
   port: 8500
   useSSL: false
 variables:
-  v1: v1-value
+  namespace: test.micro-ci
   v2: v2-value
 commonEnvs:
-  cev1: cev1-value
-  cev2: cev2-value
+  MICRO_SERVER_VERSION: v0.0.1
+  MICRO_SERVER_ID: default
+  MICRO_REGISTER_INTERVAL: "30"
+  MICRO_REGISTER_TTL: "60"
 thirdServices:
   consul:
     image:
@@ -23,6 +25,27 @@ thirdServices:
     assertions:
       successes:
         - Consul agent running!
+  micro-ci-api:
+    dependsOn:
+      - consul
+    image:
+      name: alydnh/micro:latest
+    exposedPorts:
+      8089/tcp:
+        hostIP: 0.0.0.0
+        hostPort: 7089
+    args:
+      - --api_address=0.0.0.0:8089
+      - api
+      - --handler=rpc
+      - --namespace={{ .namespace }}.ci
+    assertions:
+      successes:
+        - HTTP API Listening on
+      fails:
+        - Error listing endpoints
+        - micro - A microservice toolkit
+        - Incorrect Usage.
 services:
   helloWorld:
     dependsOn:
