@@ -1,11 +1,10 @@
-package ci
+package logs
 
 import (
-	"github.com/alydnh/go-micro-ci-common/logs"
 	"io"
 )
 
-func CreateLogrusScopeWriter(scope *logs.LogrusScope) io.Writer {
+func NewWriter(scope *LogrusScope) io.Writer {
 	return &logrusScopeWriter{
 		scope:      scope,
 		lineBuffer: make([]byte, 0, 1000),
@@ -13,7 +12,7 @@ func CreateLogrusScopeWriter(scope *logs.LogrusScope) io.Writer {
 }
 
 type logrusScopeWriter struct {
-	scope      *logs.LogrusScope
+	scope      *LogrusScope
 	lineBuffer []byte
 }
 

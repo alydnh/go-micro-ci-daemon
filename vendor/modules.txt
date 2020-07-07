@@ -8,7 +8,7 @@ github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
 # github.com/Microsoft/hcsshim v0.8.7-0.20191101173118-65519b62243c
 github.com/Microsoft/hcsshim/osversion
-# github.com/alydnh/go-micro-ci-common v0.0.0-20200702094049-8cf4ee3c2ac7
+# github.com/alydnh/go-micro-ci-common v0.0.0-20200706062435-f798f520ecf6
 github.com/alydnh/go-micro-ci-common/logs
 github.com/alydnh/go-micro-ci-common/utils
 github.com/alydnh/go-micro-ci-common/yaml
@@ -179,11 +179,11 @@ github.com/hashicorp/consul/api
 github.com/hashicorp/consul/api/watch
 # github.com/hashicorp/go-cleanhttp v0.5.1
 github.com/hashicorp/go-cleanhttp
-# github.com/hashicorp/go-immutable-radix v1.0.0
+# github.com/hashicorp/go-immutable-radix v1.2.0
 github.com/hashicorp/go-immutable-radix
 # github.com/hashicorp/go-rootcerts v1.0.0
 github.com/hashicorp/go-rootcerts
-# github.com/hashicorp/golang-lru v0.5.3
+# github.com/hashicorp/golang-lru v0.5.4
 github.com/hashicorp/golang-lru/simplelru
 # github.com/hashicorp/hcl v1.0.0
 github.com/hashicorp/hcl

@@ -12,6 +12,7 @@ import (
 	"github.com/micro/go-micro/v2/logger"
 	"github.com/sirupsen/logrus"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -21,63 +22,86 @@ func main() {
 	ci.DefaultLogger = logrus.New()
 	ci.DefaultLogger.Out = os.Stdout
 	ci.DefaultLogger.SetFormatter(&logrus.TextFormatter{})
+
+	if v, ok := os.LookupEnv("ENABLE_LOGGER_CALLER"); ok && strings.Compare(v, "true") == 0 {
+		ci.DefaultLogger.ReportCaller = true
+	}
+
 	mainLogScope := &logs.LogrusScope{Entry: ci.DefaultLogger.WithField("name", "main")}
-	_ = mainLogScope.WithField("type", "initialize").Call(func(ls *logs.LogrusScope) (result interface{}, err error) {
-		ls.Info("open:", defaultCIPath)
-		ci.CI, err = yaml.OpenCI(defaultCIPath, true)
-		if nil != err {
-			ls.WithField("file", defaultCIPath).Error(err)
-			return nil, err
-		}
-		ls.WithField("ciName", ci.CI.CIName).Info("open successes.")
+	_ = mainLogScope.WithField("type", "initialize").
+		Call(initializeCI).
+		Then(checkDockerVersion).
+		Then(ensureDockerNetwork).
+		Then(deploy).
+		Then(run).
+		OnError(func(err error, ls *logs.LogrusScope) error {
+			ls.Error(err)
+			os.Exit(2)
+			return err
+		})
+}
+
+func initializeCI(ls *logs.LogrusScope) (err error) {
+	ls.Info("open:", defaultCIPath)
+	ci.CI, err = yaml.OpenCI(defaultCIPath, true)
+	if nil != err {
+		ls.WithField("file", defaultCIPath).Error(err)
+		return err
+	}
+	ls.WithField("ciName", ci.CI.CIName).Info("open successes.")
+	return
+}
+
+func checkDockerVersion(ls *logs.LogrusScope) (err error) {
+	ls.Info("check docker version")
+	v, err := docker.GetDockerVersion()
+	if nil != err {
 		return
-	}).Then(func(last interface{}, ls *logs.LogrusScope) (result interface{}, err error) {
-		ls.Info("check docker version")
-		v, err := docker.GetDockerVersion()
-		if nil != err {
-			return
-		}
-		ls.WithField("dockerVersion", v).Info("docker version detected")
-		return
-	}).Then(func(last interface{}, ls *logs.LogrusScope) (result interface{}, err error) {
-		networkMode := fmt.Sprintf("%s-network", ci.CI.CIName)
-		ls.WithField("dockerNetworkMode", networkMode).Info("prepare docker network...")
-		return nil, docker.EnsureNetworkMode(networkMode, "bridge")
-	}).Then(func(last interface{}, ls *logs.LogrusScope) (result interface{}, err error) {
-		ls.Info("starting third services...")
-		for _, containerName := range ci.CI.GetSequencedContainerNames() {
-			service := ci.CI.GetService(containerName)
-			if service.IsThird() {
-				result := ls.WithField("containerName", containerName).Call(func(ls *logs.LogrusScope) (result interface{}, err error) {
-					deployment, err := deployments.FromService(containerName)
-					return nil, deployment.Deploy()
-				})
-				if result.HasError() {
-					return nil, result.GetError()
+	}
+	ls.WithField("dockerVersion", v).Info("docker version detected")
+	return
+}
+
+func ensureDockerNetwork(ls *logs.LogrusScope) error {
+	networkMode := ci.GetNetworkMode()
+	ls.WithField("dockerNetworkMode", networkMode).Info("prepare docker network...")
+	return docker.EnsureNetworkMode(networkMode, "bridge")
+}
+
+func deploy(ls *logs.LogrusScope) (err error) {
+	ls.Info("starting third services...")
+	for _, containerName := range ci.CI.GetSequencedContainerNames() {
+		service := ci.CI.GetService(containerName)
+		if service.IsThird() {
+			result := ls.WithField("containerName", containerName).Handle(func(ls *logs.LogrusScope) (result interface{}, err error) {
+				deployment, err := deployments.FromService(containerName)
+				if nil != err {
+					return nil, err
 				}
+				return nil, deployment.Deploy()
+			})
+			if result.HasError() {
+				return result.GetError()
 			}
 		}
-		return
-	}).Then(func(last interface{}, ls *logs.LogrusScope) (result interface{}, err error) {
-		ls.Info("starting service...")
-		logger.DefaultLogger = logs.NewMicroLogrus(ci.DefaultLogger)
-		serviceName := fmt.Sprintf("%s.%s", ci.CI.Namespace, ci.CI.CIName)
-		service := micro.NewService(
-			micro.Name(serviceName),
-			micro.RegisterInterval(time.Second*30),
-			micro.RegisterTTL(time.Second*60),
-			micro.Version("default"),
-			registry.Registry(ci.CI.Registry),
-			micro.AfterStart(func() error {
-				ls.WithField("serviceName", serviceName).Info("Started")
-				return nil
-			}),
-		)
-		service.Init()
-		return nil, service.Run()
-	}).OnError(func(err error, ls *logs.LogrusScope) error {
-		ls.Error(err)
-		os.Exit(2)
-		return err
-	})
+	}
+	return
+}
+
+func run(ls *logs.LogrusScope) (err error) {
+	ls.Info("deploying service...")
+	logger.DefaultLogger = logs.NewMicroLogrus(ci.DefaultLogger)
+	serviceName := fmt.Sprintf("%s.%s", ci.CI.Namespace, ci.CI.CIName)
+	service := micro.NewService(
+		micro.Name(serviceName),
+		micro.RegisterInterval(time.Second*30),
+		micro.RegisterTTL(time.Second*60),
+		registry.Registry(ci.CI.Registry),
+		micro.AfterStart(func() error {
+			ls.WithField("serviceName", serviceName).Info("Started")
+			return nil
+		}),
+	)
+	service.Init()
+	return service.Run()
 }

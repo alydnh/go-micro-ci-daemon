@@ -1,6 +1,7 @@
 package ci
 
 import (
+	"fmt"
 	"github.com/alydnh/go-micro-ci-common/utils"
 	"github.com/alydnh/go-micro-ci-common/yaml"
 	"github.com/sirupsen/logrus"
@@ -30,4 +31,18 @@ func GetServiceImageRef(service *yaml.Service) *string {
 
 func GetCredential(service *yaml.Service) *yaml.Credential {
 	return CI.GetCredential(service.Image.Name, GetServiceImageRef(service))
+}
+
+func GetServiceEnvironments(service *yaml.Service) map[string]string {
+	env := utils.CopyMap(CI.CommonEnvs).(map[string]string)
+	if !service.IsThird() && nil != service.Env {
+		for key, value := range service.Env {
+			env[key] = value
+		}
+	}
+	return env
+}
+
+func GetNetworkMode() string {
+	return fmt.Sprintf("%s-network", CI.CIName)
 }
