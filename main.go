@@ -18,6 +18,8 @@ import (
 
 const defaultCIPath = "micro-ci/ci.yaml"
 
+var ErrNetworkCreated = fmt.Errorf("ERROR_NETWORK_CREATED")
+
 func main() {
 	ci.DefaultLogger = logrus.New()
 	ci.DefaultLogger.Out = os.Stdout
@@ -35,6 +37,11 @@ func main() {
 		Then(deploy).
 		Then(run).
 		OnError(func(err error, ls *logs.LogrusScope) error {
+			if err == ErrNetworkCreated {
+				ls.Info("docker network:", ci.GetNetworkMode(), "created, please delete this container and run container again with --network=", ci.GetNetworkMode())
+				os.Exit(1)
+			}
+
 			ls.Error(err)
 			os.Exit(2)
 			return err
@@ -65,7 +72,15 @@ func checkDockerVersion(ls *logs.LogrusScope) (err error) {
 func ensureDockerNetwork(ls *logs.LogrusScope) error {
 	networkMode := ci.GetNetworkMode()
 	ls.WithField("dockerNetworkMode", networkMode).Info("prepare docker network...")
-	return docker.EnsureNetworkMode(networkMode, "bridge")
+	created, err := docker.EnsureNetworkMode(networkMode, "bridge")
+	if nil != err {
+		return err
+	}
+	if created {
+		return ErrNetworkCreated
+	}
+
+	return nil
 }
 
 func deploy(ls *logs.LogrusScope) (err error) {
