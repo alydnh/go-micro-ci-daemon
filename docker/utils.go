@@ -30,21 +30,22 @@ func EnsureNetworkMode(networkMode, driver string) (created bool, err error) {
 
 	filterArgs := filters.NewArgs()
 	filterArgs.Add("name", networkMode)
-	if r, err := dockerClient.NetworkList(context.Background(), types.NetworkListOptions{
-		Filters: filterArgs,
-	}); nil != err {
+	r, err := dockerClient.NetworkList(context.Background(), types.NetworkListOptions{Filters: filterArgs})
+	if nil != err {
 		return false, err
-	} else if len(r) > 0 {
+	}
+	if len(r) > 0 {
 		if strings.Compare(r[0].Driver, driver) != 0 {
 			return false, fmt.Errorf("%s:网络驱动模式为%s, 预期为:%s", networkMode, r[0].Driver, driver)
 		}
-	} else if _, err := dockerClient.NetworkCreate(context.Background(), networkMode, types.NetworkCreate{
-		Driver: driver,
-	}); nil != err {
-		return true, err
+		return false, nil
+	}
+	_, err = dockerClient.NetworkCreate(context.Background(), networkMode, types.NetworkCreate{Driver: driver})
+	if nil != err {
+		return false, err
 	}
 
-	return false, nil
+	return true, nil
 }
 
 func DeleteImage(imageID string) error {
