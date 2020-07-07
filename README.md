@@ -1,6 +1,10 @@
 # go-micro-ci-daemon
 基于Golang开发的微CI工具（守护程序）
 
+## 2020-07-07 创建docker network后结束运行
+1. 如果DOCKER网络被创建则：docker run的时候需使用--network=network参数进行重启
+2. 第一次启动daemon容器时，不要带入--network参数，否则可能因为不在一个虚拟网络中导致daemon无法注册的问题
+
 ## 2020-07-07 自动部署thirdServices
 1. 统一服务注册类型(当前新增支持consul)
     ```yaml
