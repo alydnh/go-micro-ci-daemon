@@ -9,6 +9,7 @@ require (
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/docker/swarmkit v1.12.0 // indirect
+	github.com/golang/protobuf v1.4.2
 	github.com/hashicorp/go-memdb v1.2.1 // indirect
 	github.com/micro/go-micro/v2 v2.9.0
 	github.com/micro/go-plugins/registry/consul/v2 v2.8.0
