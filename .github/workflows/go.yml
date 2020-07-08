@@ -27,7 +27,7 @@ jobs:
         gitImport=github.com/alydnh/go-micro-ci-daemon/ci
         buildDate=$(date +%s)
         CGO_ENABLE=0
-        ldFlags=-X $(gitImport).GitCommit=$(gitCommit) -X $(gitImport).GitTag=$(gitTag)  -X $(gitImport).BuildDate=$(buildDate)
+        ldFlags="-X ${gitImport}.GitCommit=${gitCommit} -X ${gitImport}.GitTag=${gitTag} -X ${gitImport}.BuildDate=${buildDate}"
         go build -a -installsuffix cgo -ldflags "-s -w ${ldFlags}" -o target/go-micro-ci-daemon -v -mod=vendor
         cp -r micro-ci target/
         cp Dockerfile target/
