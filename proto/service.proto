@@ -1,0 +1,14 @@
+syntax="proto3";
+package daemon.proto;
+option go_package="github.com/alydnh/go-micro-ci-daemon/proto";
+
+service CIService {
+    rpc Version (EmptyRequest) returns (VersionResponse);
+}
+
+message EmptyRequest{}
+
+message VersionResponse {
+    string version = 1;
+    string error = 2;
+}

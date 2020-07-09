@@ -20,6 +20,10 @@ var (
 	MicroCIConfigFilePath           = filepath.Join(MicroCIFolderPath, "ci.yaml")
 	MicroCIArtifactFolderPath       = filepath.Join(MicroCICacheFolderName, "artifacts")
 	MicroCIDeploymentFolderPath     = filepath.Join(MicroCICacheFolderName, "deployments")
+	GitCommit                       string
+	GitTag                          string
+	BuildDate                       string
+	Version                         = "latest"
 )
 
 func GetServiceImageRef(service *yaml.Service) *string {
@@ -45,4 +49,20 @@ func GetServiceEnvironments(service *yaml.Service) map[string]string {
 
 func GetNetworkMode() string {
 	return fmt.Sprintf("%s-network", CI.CIName)
+}
+
+func GetVersion() string {
+	version := Version
+	if !utils.EmptyOrWhiteSpace(GitTag) {
+		version = GitTag
+	}
+
+	if !utils.EmptyOrWhiteSpace(GitCommit) {
+		version = fmt.Sprintf("%s-%s", version, GitCommit)
+	}
+
+	if !utils.EmptyOrWhiteSpace(BuildDate) {
+		version = fmt.Sprintf("%s-%s", version, BuildDate)
+	}
+	return version
 }

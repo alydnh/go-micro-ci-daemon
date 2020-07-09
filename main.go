@@ -7,6 +7,7 @@ import (
 	"github.com/alydnh/go-micro-ci-daemon/ci"
 	"github.com/alydnh/go-micro-ci-daemon/ci/deployments"
 	"github.com/alydnh/go-micro-ci-daemon/docker"
+	"github.com/alydnh/go-micro-ci-daemon/proto"
 	"github.com/alydnh/go-micro-ci-daemon/registry"
 	"github.com/micro/go-micro/v2"
 	"github.com/micro/go-micro/v2/logger"
@@ -113,10 +114,17 @@ func run(ls *logs.LogrusScope) (err error) {
 		micro.RegisterTTL(time.Second*60),
 		registry.Registry(ci.CI.Registry),
 		micro.AfterStart(func() error {
-			ls.WithField("serviceName", serviceName).Info("Started")
+			ls.WithField("serviceName", serviceName).WithField("version", ci.GetVersion()).Info("Started")
 			return nil
 		}),
 	)
+
+	ls.Info("register ci service...")
+	err = proto.RegisterCIServiceHandler(service.Server(), &ci.Service{})
+	if nil != err {
+		return err
+	}
+
 	service.Init()
 	return service.Run()
 }

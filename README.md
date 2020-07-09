@@ -1,6 +1,12 @@
 # go-micro-ci-daemon
 基于Golang开发的微CI工具（守护程序）
 
+## 2020-07-08 daemon RPC 服务
+1. 修改go.yml ci文件，打包时支持LDFLAGS注入版本信息
+2. ci/service.go 新增version接口，获取当前版本信息
+3. 启动日志加入version打印
+4. go mod vendor
+
 ## 2020-07-07 创建docker network后结束运行
 1. 如果DOCKER网络被创建则：docker run的时候需使用--network=network参数进行重启
 2. 第一次启动daemon容器时，不要带入--network参数，否则可能因为不在一个虚拟网络中导致daemon无法注册的问题
