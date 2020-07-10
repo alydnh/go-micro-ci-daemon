@@ -42,6 +42,19 @@ type LogrusScopeResult struct {
 	*logrus.Entry
 }
 
+func (r *LogrusScopeResult) Catch(h LogrusScopeErrorHandler) *LogrusScopeResult {
+	if !r.HasError() {
+		return r
+	}
+
+	err := h(r.err, &LogrusScope{Entry: r.Entry})
+	return &LogrusScopeResult{
+		err:    err,
+		result: nil,
+		Entry:  r.Entry,
+	}
+}
+
 func (r *LogrusScopeResult) ThenHandle(h LogrusScopeThenHandler) *LogrusScopeResult {
 	if r.HasError() {
 		return r

@@ -6,13 +6,14 @@ import (
 	"github.com/alydnh/go-micro-ci-common/yaml"
 	"github.com/sirupsen/logrus"
 	"path/filepath"
+	"strings"
 )
 
 var (
 	DefaultLogger                   *logrus.Logger
 	CI                              *yaml.CI
 	MicroCIFolderPath               = "micro-ci"
-	MicroCICacheFolderName          = ".ci"
+	MicroCICacheFolderName          = filepath.Join(MicroCIFolderPath, ".ci")
 	MicroCISourceFolderName         = "source"
 	MicroCIArtifactManifestFileName = "ci.manifest"
 	MicroCIMountFolderPath          = "mounts"
@@ -38,13 +39,25 @@ func GetCredential(service *yaml.Service) *yaml.Credential {
 }
 
 func GetServiceEnvironments(service *yaml.Service) map[string]string {
-	env := utils.CopyMap(CI.CommonEnvs).(map[string]string)
-	if !service.IsThird() && nil != service.Env {
-		for key, value := range service.Env {
-			env[key] = value
+	serviceEnv := make(map[string]string)
+	if nil != CI.CommonEnvs && !service.DisableCommonEnv {
+		for key, value := range CI.CommonEnvs {
+			serviceEnv[key] = value
 		}
 	}
-	return env
+	serviceEnv["MICRO_REGISTRY"] = CI.Registry.Type
+	serviceEnv["MICRO_REGISTRY_ADDRESS"] = fmt.Sprintf("%s:%d", CI.Registry.Address, CI.Registry.Port)
+	if !CI.Registry.UseSSL {
+		if strings.Compare(CI.Registry.Type, "consul") == 0 {
+			serviceEnv["CONSUL_HTTP_SSL"] = "0"
+		}
+	}
+
+	for key, value := range service.Env {
+		serviceEnv[key] = value
+	}
+
+	return serviceEnv
 }
 
 func GetNetworkMode() string {

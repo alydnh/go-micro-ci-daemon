@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -33,6 +34,8 @@ func FromService(containerName string) (*Deployment, error) {
 		networkMode: ci.GetNetworkMode(),
 	}, nil
 }
+
+var DeploymentNotChangedErr = fmt.Errorf("deployment has no changed with deployed docker container")
 
 type Deployment struct {
 	deployment        *yaml.Deployment
@@ -57,23 +60,44 @@ func (d Deployment) logrusScope() *logs.LogrusScope {
 }
 
 func (d *Deployment) Deploy() error {
-	return d.logrusScope().Call(d.ensureImage).Then(d.run).Then(d.purge, d.originalContainer).GetError()
+	return d.logrusScope().Call(d.checkExists).Then(d.ensureImage).Then(d.run).Then(d.purge, d.originalContainer).Then(d.save).GetError()
+}
+
+func (d *Deployment) checkExists(ls *logs.LogrusScope) error {
+	ls.Info("checking existed docker container...")
+	if nil != d.deployment {
+		if !d.deployment.Equals(d.service.Args, d.serviceEnv, d.service.ExposedPorts, d.service.Mounts) {
+			ls = ls.WithField("reason", "Environment, Arguments, Port Mapping, Mounts")
+		} else if utils.EmptyOrWhiteSpace(d.deployment.DockerImageID) || utils.EmptyOrWhiteSpace(d.deployment.ContainerID) {
+			ls = ls.WithField("reason", "DOCKER_CONTAINER_INFO_NOT_FOUND")
+		} else if exists, err := d.container.Exists(); nil != err {
+			return err
+		} else if !exists {
+			ls = ls.WithField("reason", "DOCKER_CONTAINER_NOT_FOUND")
+		} else if containerID, err := d.container.EnsureID(); nil != err {
+			return err
+		} else if strings.Compare(containerID, d.deployment.ContainerID) != 0 {
+			ls = ls.WithField("reason", "DOCKER_CONTAINER_ID")
+		} else if image, err := d.container.GetImageID(); nil != err {
+			return err
+		} else if strings.Compare(image, d.deployment.DockerImageID) != 0 {
+			ls = ls.WithField("reason", "IMAGE_ID")
+		} else if running, err := d.container.IsRunning(); nil != err {
+			return err
+		} else if !running {
+			ls = ls.WithField("reason", "NOT_RUNNING")
+		} else {
+			return DeploymentNotChangedErr
+		}
+		d.deployment = nil
+	}
+
+	ls.Info("need redeployment")
+	return nil
 }
 
 func (d *Deployment) run(ls *logs.LogrusScope) (err error) {
-	serviceEnv := utils.CopyMap(d.serviceEnv).(map[string]string)
-	if nil != ci.CI.CommonEnvs {
-		for key, value := range ci.CI.CommonEnvs {
-			serviceEnv[key] = value
-		}
-	}
-	serviceEnv["MICRO_REGISTRY"] = ci.CI.Registry.Type
-	serviceEnv["MICRO_REGISTRY_ADDRESS"] = fmt.Sprintf("%s:%d", ci.CI.Registry.Address, ci.CI.Registry.Port)
-	if !ci.CI.Registry.UseSSL {
-		serviceEnv["CONSUL_HTTP_SSL"] = "0"
-	}
-
-	d.container.SetEnv(serviceEnv)
+	d.container.SetEnv(d.serviceEnv)
 	d.container.SetNetwork(&d.networkMode)
 	if nil != d.service.ExposedPorts {
 		for name, portYaml := range d.service.ExposedPorts {
@@ -244,5 +268,30 @@ func (d *Deployment) ensureImage(ls *logs.LogrusScope) (err error) {
 		d.container.SetAuthConfig(credential.Host, credential.UserName, credential.Password)
 	}
 	_, err = d.container.EnsureImage(d.service.Image.Name, d.imageRef, logs.NewWriter(ls))
+	return
+}
+
+func (d *Deployment) save(ls *logs.LogrusScope) (err error) {
+	path := filepath.Join(ci.MicroCIDeploymentFolderPath, d.service.Name())
+	ls.WithField("fileName", path).Info("save deployment")
+	deployedImageID := utils.EmptyString
+	if deployedImageID, err = d.container.GetImageID(); nil != err {
+		return err
+	}
+
+	deployment := yaml.CreateDeployment(
+		d.service.Name(),
+		*d.container.ID(),
+		d.container.Name(),
+		deployedImageID,
+		d.service.Args,
+		d.serviceEnv,
+		d.service.ExposedPorts,
+		d.service.Mounts)
+	err = deployment.SaveToFile(path)
+	if nil == err {
+		return err
+	}
+	d.deployment = deployment
 	return
 }

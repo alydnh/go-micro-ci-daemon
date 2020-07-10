@@ -1,6 +1,35 @@
 # go-micro-ci-daemon
 基于Golang开发的微CI工具（守护程序）
 
+## 2020-07-10 完成 `保存部署清单文件`
+1. 启动容器前扫描配置是否变更，按需启动
+2. 启动完成后在micro-ci/.ci/deployments/{service}文件中保存相应配置
+    ```yaml
+    args:
+      - --api_address=0.0.0.0:8089
+      - api
+      - --handler=rpc
+      - --namespace=test.micro-ci.ci
+    env:
+        CONSUL_HTTP_SSL: "0"
+        MICRO_REGISTER_INTERVAL: "30"
+        MICRO_REGISTER_TTL: "60"
+        MICRO_REGISTRY: consul
+        MICRO_REGISTRY_ADDRESS: micro-ci-test-consul:8500
+        MICRO_SERVER_ID: default
+        MICRO_SERVER_VERSION: v0.0.1
+    serviceName: micro-ci-api
+    containerName: micro-ci-test-micro-ci-api
+    containerID: 2b3e02dbdbe24a7ead01b086ce7af5c4aa29cf18c010b921d58d4cc2681dfc7b
+    dockerImageID: sha256:581acc38dfb061640d8cb46f1d6088da87fa1e2cb1a7e95674565e3ecf069381
+    exposedPorts:
+        8089/tcp:
+            hostIP: 0.0.0.0
+            hostPort: 7089
+    mounts: {}
+    ```
+3. 更新ci-common update vendor
+
 ## 2020-07-08 daemon RPC 服务
 1. 修改go.yml ci文件，打包时支持LDFLAGS注入版本信息
 2. ci/service.go 新增version接口，获取当前版本信息
