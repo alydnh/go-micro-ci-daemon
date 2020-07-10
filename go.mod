@@ -3,7 +3,7 @@ module github.com/alydnh/go-micro-ci-daemon
 go 1.13
 
 require (
-	github.com/alydnh/go-micro-ci-common v0.0.0-20200706062435-f798f520ecf6
+	github.com/alydnh/go-micro-ci-common v0.0.0-20200710082132-eb6967398a4a
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-metrics v0.0.1 // indirect

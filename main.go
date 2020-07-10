@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/alydnh/go-micro-ci-common/logs"
+	"github.com/alydnh/go-micro-ci-common/utils"
 	"github.com/alydnh/go-micro-ci-common/yaml"
 	"github.com/alydnh/go-micro-ci-daemon/ci"
 	"github.com/alydnh/go-micro-ci-daemon/ci/deployments"
@@ -32,7 +33,8 @@ func main() {
 
 	mainLogScope := &logs.LogrusScope{Entry: ci.DefaultLogger.WithField("name", "main")}
 	_ = mainLogScope.WithField("type", "initialize").
-		Call(initializeCI).
+		Call(ensureCIDirectories).
+		Then(initializeCI).
 		Then(checkDockerVersion).
 		Then(ensureDockerNetwork).
 		Then(deploy).
@@ -47,6 +49,12 @@ func main() {
 			os.Exit(2)
 			return err
 		})
+}
+
+func ensureCIDirectories(ls *logs.LogrusScope) (err error) {
+	ls.WithField("folderPath", ci.MicroCIDeploymentFolderPath).Info("ensure deployments folder...")
+	err = utils.EnsureDirectory(ci.MicroCIDeploymentFolderPath, true)
+	return
 }
 
 func initializeCI(ls *logs.LogrusScope) (err error) {
@@ -94,7 +102,11 @@ func deploy(ls *logs.LogrusScope) (err error) {
 				if nil != err {
 					return nil, err
 				}
-				return nil, deployment.Deploy()
+				deployErr := deployment.Deploy()
+				if nil != deployErr && deployErr != deployments.DeploymentNotChangedErr {
+					err = deployErr
+				}
+				return
 			})
 			if result.HasError() {
 				return result.GetError()

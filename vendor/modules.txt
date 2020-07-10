@@ -8,7 +8,7 @@ github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
 # github.com/Microsoft/hcsshim v0.8.7-0.20191101173118-65519b62243c
 github.com/Microsoft/hcsshim/osversion
-# github.com/alydnh/go-micro-ci-common v0.0.0-20200706062435-f798f520ecf6
+# github.com/alydnh/go-micro-ci-common v0.0.0-20200710082132-eb6967398a4a
 github.com/alydnh/go-micro-ci-common/logs
 github.com/alydnh/go-micro-ci-common/utils
 github.com/alydnh/go-micro-ci-common/yaml

@@ -46,6 +46,26 @@ thirdServices:
         - Error listing endpoints
         - micro - A microservice toolkit
         - Incorrect Usage.
+  micro-ci-web:
+    dependsOn:
+      - consul
+    image:
+      name: alydnh/micro:latest
+    exposedPorts:
+      8089/tcp:
+        hostIP: 0.0.0.0
+        hostPort: 7088
+    args:
+      - --web_address=0.0.0.0:8088
+      - web
+      - --namespace={{ .namespace }}.ci
+    assertions:
+      successes:
+        - "Registering node: go.micro.web"
+      fails:
+        - Error listing endpoints
+        - micro - A microservice toolkit
+        - Incorrect Usage.
 services:
   helloWorld:
     dependsOn:

@@ -6,21 +6,22 @@ import (
 )
 
 type Service struct {
-	name         string
-	BaseService  string            `yaml:"baseService"`
-	Image        *Image            `yaml:"image"`
-	ExposedPorts ExposedPorts      `yaml:"exposedPorts"`
-	Env          map[string]string `yaml:"env"`
-	Mounts       Mounts            `yaml:"mounts"`
-	Args         []string          `yaml:"args"`
-	Build        *Build            `yaml:"build"`
-	MetaData     map[string]string `yaml:"metadata"`
-	Assertions   *Assertions       `yaml:"assertions"`
-	DependsOn    []string          `yaml:"dependsOn"`
-	Tags         map[string]string `yaml:"tags"`
-	DataSource   DataSource        `yaml:"dataSource"`
-	isThird      bool
-	snapShot     *Service
+	name             string
+	BaseService      string            `yaml:"baseService"`
+	Image            *Image            `yaml:"image"`
+	ExposedPorts     ExposedPorts      `yaml:"exposedPorts"`
+	Env              map[string]string `yaml:"env"`
+	Mounts           Mounts            `yaml:"mounts"`
+	Args             []string          `yaml:"args"`
+	Build            *Build            `yaml:"build"`
+	MetaData         map[string]string `yaml:"metadata"`
+	Assertions       *Assertions       `yaml:"assertions"`
+	DependsOn        []string          `yaml:"dependsOn"`
+	Tags             map[string]string `yaml:"tags"`
+	DataSource       DataSource        `yaml:"dataSource"`
+	DisableCommonEnv bool              `yaml:"disableCommonEnv"`
+	isThird          bool
+	snapShot         *Service
 }
 
 func (y Service) Name() string {
